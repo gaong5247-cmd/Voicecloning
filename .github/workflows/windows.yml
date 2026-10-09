@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: 'requirements/*.txt'
+          cache-dependency-path: 'requirements/${{ matrix.backend }}.txt'
       - name: Build and smoke test portable EXE
         shell: pwsh
         run: ./scripts/build_windows.ps1 -Backend ${{ matrix.backend }}
