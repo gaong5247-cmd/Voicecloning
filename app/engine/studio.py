@@ -132,7 +132,10 @@ class Studio:
                     a=int(span['start']*sr); b=min(len(track),int(span['end']*sr))
                     for start in range(a,b,sr*12):
                         check(); end=min(b,start+sr*12); progress(f'Converting {speaker} {start/sr:.1f}s')
-                        converted=engine.convert(track[start:end],profile,steps)
+                        if getattr(engine,'supports_cancellation',False):
+                            converted=engine.convert(track[start:end],profile,steps,check_cancel=check)
+                        else:
+                            converted=engine.convert(track[start:end],profile,steps)
                         converted,_=align_length(converted,end-start); output_track[start:end]=converted
                 track=output_track
             mixed[:min(len(track),len(mixed))]+=track[:len(mixed)]*float(settings.get('gain',1))
