@@ -20,6 +20,7 @@ def convert_file(engine, source, profile, output, job, progress=lambda fraction,
     chunk=int(sr*settings.get('chunk_seconds',12)); pad=int(sr*.2)
     if not 1<=chunk/sr<=18: raise ValueError('Chunk duration must be 1–18 seconds')
     result=np.zeros_like(wave); errors=[]
+    total_chunks=(len(wave)+chunk-1)//chunk
     try:
         for index,start in enumerate(range(0,len(wave),chunk)):
             job.check(); end=min(len(wave),start+chunk)
@@ -28,8 +29,13 @@ def convert_file(engine, source, profile, output, job, progress=lambda fraction,
             if saved and path.exists() and digest(path)==saved['sha256']:
                 converted,_=sf.read(path,dtype='float32'); difference=saved['length_difference']
             else:
-                progress(start/len(wave),f'Converting chunk {index+1}')
-                converted=engine.convert(wave[a:b],profile,settings.get('steps',20))
+                progress(start/len(wave),f'Converting chunk {index+1}/{total_chunks}')
+                # Real SeedEngine checks cancellation between diffusion steps;
+                # test doubles and alternative engines keep their prior signature.
+                if getattr(engine,'supports_cancellation',False):
+                    converted=engine.convert(wave[a:b],profile,settings.get('steps',20),check_cancel=job.check)
+                else:
+                    converted=engine.convert(wave[a:b],profile,settings.get('steps',20))
                 aligned,difference=align_length(converted,b-a); converted=aligned[start-a:end-a]
                 write_audio(path,converted,sr)
                 job.record['chunks'][str(index)]={'sha256':digest(path),'length_difference':difference}
