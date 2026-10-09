@@ -3,21 +3,24 @@ $ErrorActionPreference='Stop'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 function Run-Python { & python @args; if ($LASTEXITCODE -ne 0) { throw "Python failed: $args" } }
 function Mark-Stage([string]$Message) { Write-Host ("[{0}] {1}" -f (Get-Date).ToUniversalTime().ToString('HH:mm:ss'), $Message) }
-function Test-Frozen([string]$Argument) {
+function Test-Frozen([string]$Argument, [int]$TimeoutSeconds=240, [switch]$AllowTimeout) {
     $exe = 'dist/CloneVoiceStudio/CloneVoiceStudio.exe'
-    Mark-Stage "Launching $Argument"
+    Mark-Stage "Launching $Argument (timeout: $TimeoutSeconds seconds)"
     $process = Start-Process $exe -ArgumentList $Argument -PassThru
-    $exited = $process.WaitForExit(240000)
+    $exited = $process.WaitForExit($TimeoutSeconds * 1000)
+    if (-not $exited) {
+        try { $process.Kill($true) } catch {}
+        $message = "Frozen $Argument timed out after $TimeoutSeconds seconds (no application log implies a pre-Python startup stall)."
+        if ($AllowTimeout) { Write-Warning $message; return $false }
+        throw $message
+    }
     $log = 'validation-data/logs/app.log'
     if (Test-Path $log) {
         Mark-Stage 'Frozen startup diagnostic log:'
         Get-Content $log -Tail 30 | ForEach-Object { Write-Host $_ }
     }
-    if (-not $exited) {
-        try { $process.Kill($true) } catch {}
-        throw "Frozen $Argument timed out after 240 seconds; see validation startup log"
-    }
     if ($process.ExitCode -ne 0) { throw "Frozen $Argument failed: $($process.ExitCode)" }
+    return $true
 }
 Mark-Stage "Starting $Backend portable build"
 if (-not $SkipInstall) {
@@ -54,11 +57,61 @@ Run-Python -m PyInstaller --noconfirm --clean --onedir --windowed --name CloneVo
     --hidden-import modules.campplus.DTDNN --hidden-import modules.bigvgan.bigvgan launcher.py
 $env:QT_QPA_PLATFORM='offscreen'
 $env:CLONEVOICE_DATA=(Join-Path (Get-Location) 'validation-data')
-Mark-Stage 'Testing packaged GUI without background Intel device diagnostics (240s timeout)'
-Test-Frozen '--smoke-test'
-Remove-Item Env:QT_QPA_PLATFORM
-Mark-Stage 'Testing packaged model imports (240s timeout)'
-Test-Frozen '--engine-import-test'
+# Ordinary hosted Windows runners have no Intel Arc GPU. A PyInstaller XPU
+# executable can stall before Python logging on such a runner (observed in run
+# 37955968546), even though the XPU wheel and package build succeeded.
+# Preserve a downloadable *build-only* artifact but never call it XPU-validated.
+# Actual GPU inference still requires a physical Intel XPU smoke/benchmark.
+$validation = [ordered]@{
+    backend = $Backend
+    source_smoke = 'passed'
+    frozen_gui = 'not_run'
+    frozen_imports = 'not_run'
+    xpu_device_present_on_runner = $null
+    real_xpu_inference = 'NOT TESTED'
+}
+$allowRunnerTimeout = $false
+if ($Backend -eq 'xpu') {
+    Mark-Stage 'Checking that the installed PyTorch wheel and packaged binaries contain XPU support'
+    Run-Python -c "import torch; assert torch.version.xpu is not None, 'Not an Intel XPU PyTorch wheel'; print('XPU wheel:', torch.__version__)"
+    $xpuFiles = @(Get-ChildItem 'dist/CloneVoiceStudio/_internal/torch/lib' -Filter '*xpu*.dll' -ErrorAction SilentlyContinue)
+    if ($xpuFiles.Count -lt 1) { throw 'XPU native DLLs missing from portable package.' }
+    Mark-Stage "Found $($xpuFiles.Count) packaged XPU native DLL(s)"
+    $xpuProbe = @(& python -c "import torch; print('yes' if torch.xpu.is_available() else 'no')")
+    if ($LASTEXITCODE -ne 0) { throw 'Unable to check Intel XPU hardware availability' }
+    $hasXpu = $xpuProbe -contains 'yes'
+    $validation.xpu_device_present_on_runner = $hasXpu
+    $allowRunnerTimeout = ($env:GITHUB_ACTIONS -eq 'true') -and (-not $hasXpu)
+    Mark-Stage 'Checking XPU source-model imports'
+    Run-Python launcher.py --engine-import-test
+    $validation.source_model_imports = 'passed'
+}
+if ($allowRunnerTimeout) {
+    Mark-Stage 'Attempting frozen XPU startup on GPU-less CI (90s best-effort; not a hardware validation)'
+    $guiPass = Test-Frozen '--smoke-test' 90 -AllowTimeout
+    $validation.frozen_gui = if ($guiPass) { 'passed_on_gpu_less_runner' } else { 'TIMEOUT_UNVERIFIED' }
+    if ($guiPass) {
+        $importsPass = Test-Frozen '--engine-import-test' 90 -AllowTimeout
+        $validation.frozen_imports = if ($importsPass) { 'passed_on_gpu_less_runner' } else { 'TIMEOUT_UNVERIFIED' }
+    } else {
+        $validation.frozen_imports = 'SKIPPED_AFTER_STARTUP_TIMEOUT'
+    }
+    if (-not $guiPass -or ($validation.frozen_imports -ne 'passed_on_gpu_less_runner')) {
+        Write-Warning 'XPU portable is BUILD-ONLY / UNVERIFIED on hosted CI; run --diagnose and a real model conversion on Intel hardware.'
+    }
+} else {
+    Mark-Stage 'Testing packaged GUI without background Intel device diagnostics'
+    $null = Test-Frozen '--smoke-test'
+    $validation.frozen_gui = 'passed'
+    Remove-Item Env:QT_QPA_PLATFORM
+    Mark-Stage 'Testing packaged model imports'
+    $null = Test-Frozen '--engine-import-test'
+    $validation.frozen_imports = 'passed'
+}
+if (Test-Path Env:QT_QPA_PLATFORM) { Remove-Item Env:QT_QPA_PLATFORM }
+$validation | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'dist/CloneVoiceStudio/build-verification.json'
+New-Item -ItemType Directory -Force validation | Out-Null
+$validation | ConvertTo-Json -Depth 4 | Set-Content -Encoding utf8 'validation/build-verification.json'
 if ($Backend -eq 'cpu') {
     Mark-Stage 'Running actual packaged CPU conversion smoke test'
     Run-Python scripts/frozen_model_smoke.py dist/CloneVoiceStudio/CloneVoiceStudio.exe validation-data
