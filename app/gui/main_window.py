@@ -24,7 +24,7 @@ def spin(minimum,maximum,value):
     b=QSpinBox(); b.setRange(minimum,maximum); b.setValue(value); return b
 
 class Window(QMainWindow):
-    def __init__(self):
+    def __init__(self, *, startup_diagnostics=True):
         super().__init__(); self.setWindowTitle('CloneVoice Studio • '+VERSION); self.resize(1280,850)
         self.profiles=Profiles(); self.engine=None; self.engine_key=None; self.worker=None
         self.active_job=None; self.rt=None; self.project=None; self.last_output=None
@@ -49,7 +49,9 @@ class Window(QMainWindow):
         self.nav.setCurrentRow(0); self.refresh_profiles(); self.apply_theme()
         self.language.currentTextChanged.connect(self.translate); self.translate()
         self.timer=QTimer(self); self.timer.timeout.connect(self.tick); self.timer.start(500)
-        QTimer.singleShot(100,self.run_diagnostics)
+        # Do not start an XPU/oneAPI device probe in the frozen GUI smoke test.
+        # Normal interactive launches still run the hardware probe automatically.
+        if startup_diagnostics: QTimer.singleShot(100,self.run_diagnostics)
     def page(self,title,description):
         w=QWidget(); layout=QVBoxLayout(w); title_label=QLabel(title); title_label.setStyleSheet('font-size:24px;font-weight:700')
         layout.addWidget(title_label); label=QLabel(description); label.setWordWrap(True); layout.addWidget(label)

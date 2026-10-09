@@ -16,6 +16,7 @@ def main():
     if sys.stderr is None: sys.stderr=open(DATA/'logs'/'stderr.log','a',encoding='utf-8',buffering=1)
     logging.basicConfig(filename=DATA/'logs'/'app.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
     configure_offline()
+    logging.info('CloneVoice Studio starting, smoke_test=%s, engine_import_test=%s',args.smoke_test,args.engine_import_test)
     try:
         if args.download:
             import os
@@ -50,17 +51,24 @@ def main():
             result=convert_file(SeedEngine(args.backend,args.precision,model_kind=args.model),args.source,Profiles().get(args.profile),args.output,job,
                                 lambda f,m:print(f'{f:.0%} {m}'))
             print(json.dumps(result['metrics'],indent=2)); return 0
+        logging.info('Preparing Qt GUI')
         from PySide6.QtWidgets import QApplication
         from PySide6.QtCore import QTimer
         from app.gui.main_window import Window
-        application=QApplication(sys.argv); application.setApplicationName('CloneVoiceStudio'); window=Window(); window.show()
+        application=QApplication(sys.argv); application.setApplicationName('CloneVoiceStudio')
+        logging.info('Creating main window')
+        window=Window(startup_diagnostics=not args.smoke_test); window.show()
+        logging.info('Main window displayed')
         if args.smoke_test:
             window.timer.stop()
             def finish():
                 if window.worker and window.worker.isRunning(): QTimer.singleShot(100,finish)
                 else: window.close(); application.quit()
             QTimer.singleShot(1000,finish)
-        return application.exec()
+            logging.info('GUI smoke test exit timer scheduled')
+        result=application.exec()
+        logging.info('Qt event loop exited with %s',result)
+        return result
     except Exception:
         logging.exception('Application error'); raise
 

@@ -5,10 +5,17 @@ function Run-Python { & python @args; if ($LASTEXITCODE -ne 0) { throw "Python f
 function Mark-Stage([string]$Message) { Write-Host ("[{0}] {1}" -f (Get-Date).ToUniversalTime().ToString('HH:mm:ss'), $Message) }
 function Test-Frozen([string]$Argument) {
     $exe = 'dist/CloneVoiceStudio/CloneVoiceStudio.exe'
+    Mark-Stage "Launching $Argument"
     $process = Start-Process $exe -ArgumentList $Argument -PassThru
-    if (-not $process.WaitForExit(240000)) {
+    $exited = $process.WaitForExit(240000)
+    $log = 'validation-data/logs/app.log'
+    if (Test-Path $log) {
+        Mark-Stage 'Frozen startup diagnostic log:'
+        Get-Content $log -Tail 30 | ForEach-Object { Write-Host $_ }
+    }
+    if (-not $exited) {
         try { $process.Kill($true) } catch {}
-        throw "Frozen $Argument timed out after 240 seconds"
+        throw "Frozen $Argument timed out after 240 seconds; see validation startup log"
     }
     if ($process.ExitCode -ne 0) { throw "Frozen $Argument failed: $($process.ExitCode)" }
 }
@@ -46,7 +53,8 @@ Run-Python -m PyInstaller --noconfirm --clean --onedir --windowed --name CloneVo
     --hidden-import modules.flow_matching --hidden-import modules.length_regulator `
     --hidden-import modules.campplus.DTDNN --hidden-import modules.bigvgan.bigvgan launcher.py
 $env:QT_QPA_PLATFORM='offscreen'
-Mark-Stage 'Testing packaged GUI (240s timeout)'
+$env:CLONEVOICE_DATA=(Join-Path (Get-Location) 'validation-data')
+Mark-Stage 'Testing packaged GUI without background Intel device diagnostics (240s timeout)'
 Test-Frozen '--smoke-test'
 Remove-Item Env:QT_QPA_PLATFORM
 Mark-Stage 'Testing packaged model imports (240s timeout)'
