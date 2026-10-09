@@ -33,6 +33,9 @@ if ($smoke.ExitCode -ne 0) { throw "Frozen GUI smoke failed: $($smoke.ExitCode)"
 Remove-Item Env:QT_QPA_PLATFORM
 $engineCheck = Start-Process 'dist/CloneVoiceStudio/CloneVoiceStudio.exe' -ArgumentList '--engine-import-test' -Wait -PassThru
 if ($engineCheck.ExitCode -ne 0) { throw "Frozen engine imports failed: $($engineCheck.ExitCode)" }
+if ($Backend -eq 'cpu') {
+    Run-Python scripts/frozen_model_smoke.py dist/CloneVoiceStudio/CloneVoiceStudio.exe validation-data
+}
 Copy-Item README.md,LICENSE,THIRD_PARTY_NOTICES.md dist/CloneVoiceStudio/
 if (Test-Path ffmpeg-notices) { Copy-Item -Recurse ffmpeg-notices dist/CloneVoiceStudio/ }
 Run-Python -m pip freeze --exclude-editable | Out-File -Encoding utf8 dist/CloneVoiceStudio/dependency-versions.txt
@@ -44,6 +47,7 @@ Copy-Item launcher.py dist/CloneVoiceStudio/
 Copy-Item -Recurse scripts dist/CloneVoiceStudio/source-scripts -Force
 Copy-Item -Recurse requirements dist/CloneVoiceStudio/source-requirements -Force
 Copy-Item -Recurse config dist/CloneVoiceStudio/source-config -Force
+if (Test-Path validation/frozen-model.json) { Copy-Item validation/frozen-model.json dist/CloneVoiceStudio/verification.json }
 Copy-Item config/settings.template.json dist/CloneVoiceStudio/settings.template.json
 $zip="CloneVoiceStudio-Windows-x64-$Backend-Portable.zip"
 Run-Python scripts/package.py dist/CloneVoiceStudio "dist/$zip"

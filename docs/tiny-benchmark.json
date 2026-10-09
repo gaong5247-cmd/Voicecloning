@@ -1,0 +1,20 @@
+{
+  "model": "tiny XLSR/HiFT",
+  "fixture": "flite synthetic English",
+  "wall_seconds": 15.38005523799984,
+  "input_seconds": 4.382539682539683,
+  "output_seconds": 4.3769614512471655,
+  "finite": true,
+  "engine": {
+    "cache_hits": 0,
+    "fallbacks": [],
+    "load_seconds": 3.283958462998271,
+    "inference_seconds": 9.553128047999053,
+    "rtf": 2.1798155270696857,
+    "backend": "cpu",
+    "precision": "fp32",
+    "model_kind": "tiny"
+  },
+  "quality": "not listening-scored",
+  "xpu": "unavailable"
+}

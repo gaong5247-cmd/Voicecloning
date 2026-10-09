@@ -35,6 +35,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force validation | Out-Null
+          Copy-Item validation-data/logs/* validation/ -ErrorAction SilentlyContinue
           Copy-Item "$env:LOCALAPPDATA/CloneVoiceStudio/logs/*" validation/ -ErrorAction SilentlyContinue
           Copy-Item build/CloneVoiceStudio/warn-CloneVoiceStudio.txt validation/ -ErrorAction SilentlyContinue
       - name: Upload validation logs

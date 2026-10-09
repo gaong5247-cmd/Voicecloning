@@ -10,3 +10,9 @@ dist/
 *.pt
 models/
 .pytest_cache/
+validation-data/
+validation/
+bin/
+ffmpeg-temp/
+ffmpeg-notices/
+ffmpeg.zip

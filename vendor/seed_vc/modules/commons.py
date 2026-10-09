@@ -391,6 +391,8 @@ def build_model(args, stage="DiT"):
 
         length_regulator = InterpolateRegulator(
             channels=args.length_regulator.channels,
+            n_codebooks=getattr(args.length_regulator, 'n_codebooks', 1),
+            quantizer_dropout=getattr(args.length_regulator, 'quantizer_dropout', 0.0),
             sampling_ratios=args.length_regulator.sampling_ratios,
             is_discrete=args.length_regulator.is_discrete,
             in_channels=args.length_regulator.in_channels if hasattr(args.length_regulator, "in_channels") else None,
