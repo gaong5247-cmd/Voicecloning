@@ -7,10 +7,12 @@ from app.config import ROOT, digest
 from app.audio_io.files import resample
 from app.services.models import check_group
 from app.services.profiles import MODEL_VERSION
+from app.services.jobs import Cancelled
 from app.optimization.devices import select_device, Timer
 
 class SeedEngine:
     sample_rate=22050
+    supports_cancellation=True
     capabilities={'pitch':False,'formant':False,'f0':False,'batch':False,'steps':True,
                   'precision':True,'openvino':False,'npu':False}
     def __init__(self, backend='auto', precision='fp32', compile_model=False, model_kind='quality'):
@@ -21,6 +23,10 @@ class SeedEngine:
         if precision not in ('fp32','fp16','bf16'): raise ValueError('Unknown precision')
         self.loaded=False; self.lock=threading.RLock(); self.stats={'cache_hits':0,'fallbacks':[]}
         self.refs={}
+        if self.device=='cpu' and self.precision!='fp32':
+            # CPU FP16 autocast can be extremely slow (and unsupported by some kernels).
+            self.stats['fallbacks'].append(f'CPU {self.precision} requested; using FP32 for CPU inference')
+            self.precision='fp32'
     def load(self):
         if self.loaded: return
         check_group('realtime' if self.model_kind=='tiny' else 'voice')
@@ -83,7 +89,8 @@ class SeedEngine:
             finally: Path(temp).unlink(missing_ok=True)
         self.refs={key:result} # bound memory: only current profile retained
         return result
-    def convert(self, wave, profile, steps=20):
+    def convert(self, wave, profile, steps=20, check_cancel=None):
+        if check_cancel is not None: check_cancel()
         if not 1<=steps<=100: raise ValueError('Steps must be 1–100')
         wave=np.asarray(wave,dtype=np.float32)
         if len(wave)<1024: wave=np.pad(wave,(0,1024-len(wave)))
@@ -94,14 +101,21 @@ class SeedEngine:
         with self.lock, torch.inference_mode():
             for attempt in range(4):
                 try:
+                    if check_cancel is not None: check_cancel()
                     self.load()
+                    if check_cancel is not None: check_cancel()
                     with Timer(self.device) as timer:
-                        out=self._convert(wave,profile,steps)
+                        out=self._convert(wave,profile,steps,check_cancel=check_cancel)
                     if not np.isfinite(out).all(): raise FloatingPointError('NaN/Inf in model output')
                     self.stats.update(inference_seconds=timer.seconds,rtf=timer.seconds/(len(wave)/self.sample_rate),
                         backend=self.device,precision=self.precision,model_kind=self.model_kind)
                     if self.device=='xpu': self.stats['peak_allocated_bytes']=torch.xpu.max_memory_allocated()
+                    if check_cancel is not None: check_cancel()
                     return out
+                except Cancelled:
+                    # Do not treat a cancellation as an inference error and retry
+                    # the entire chunk on FP32 or CPU.
+                    raise
                 except (RuntimeError,FloatingPointError,NotImplementedError) as exc:
                     if self.compile_model:
                         self.unload(); self.compile_model=False
@@ -113,11 +127,14 @@ class SeedEngine:
                         self.stats['fallbacks'].append('Retry CPU after XPU error: '+str(exc)); self.load(); continue
                     raise
             raise RuntimeError('All safe inference retries failed')
-    def _convert(self,wave,profile,steps):
+    def _convert(self,wave,profile,steps,check_cancel=None):
         import torch
+        if check_cancel is not None: check_cancel()
         prompt,mel2,style=self.reference(profile)
+        if check_cancel is not None: check_cancel()
         w16=torch.from_numpy(resample(wave,self.sample_rate,16000)).unsqueeze(0).to(self.device)
         sem=self.semantic(w16)
+        if check_cancel is not None: check_cancel()
         source=torch.from_numpy(wave).unsqueeze(0).to(self.device)
         mel=self.mel(source.float())
         cond,*_=self.model.length_regulator(sem,ylens=torch.tensor([mel.shape[2]],device=self.device),n_quantizers=3,f0=None)
@@ -126,12 +143,13 @@ class SeedEngine:
         if window<=overlap: raise ValueError('Reference leaves insufficient source context')
         dtype={'fp16':torch.float16,'bf16':torch.bfloat16}.get(self.precision)
         while pos<cond.shape[1]:
+            if check_cancel is not None: check_cancel()
             part=cond[:,pos:pos+window]; last=pos+window>=cond.shape[1]
             cat=torch.cat((prompt,part),dim=1)
             context=torch.autocast(self.device,dtype=dtype) if dtype else contextlib.nullcontext()
             with context:
                 target=self.model.cfm.inference(cat,torch.tensor([cat.shape[1]],device=self.device),
-                    mel2,style,None,steps,inference_cfg_rate=.7)[:,:,mel2.shape[-1]:]
+                    mel2,style,None,steps,inference_cfg_rate=.7,cancel_check=check_cancel)[:,:,mel2.shape[-1]:]
             out=self.vocoder(target.float()).reshape(-1).cpu().numpy()
             if previous is not None:
                 n=min(len(previous),len(out)); fade=np.linspace(0,1,n,dtype=np.float32)
