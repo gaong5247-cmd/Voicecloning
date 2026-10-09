@@ -7,7 +7,12 @@ def diagnose():
             'hardware_end_to_end_latency_ms':None,'openvino':None,'npu':'not validated'}
     try:
         import torch
-        result['torch']=torch.__version__; result['xpu_available']=torch.xpu.is_available()
+        result['torch']=torch.__version__
+        result['torch_xpu_runtime']=getattr(torch.version,'xpu',None)
+        result['xpu_wheel_installed']=result['torch_xpu_runtime'] is not None
+        result['xpu_available']=torch.xpu.is_available()
+        if not result['xpu_available']:
+            result['xpu_diagnosis']=('CPU-only PyTorch wheel installed; use the XPU portable build' if not result['xpu_wheel_installed'] else 'XPU wheel present but no Intel XPU detected; check driver, hardware, and runtime DLLs')
         if result['xpu_available']:
             result['device']=torch.xpu.get_device_name(0)
             result['properties']=str(torch.xpu.get_device_properties(0))
@@ -30,7 +35,10 @@ def diagnose():
 def select_device(requested='auto'):
     import torch
     if requested not in ('auto','cpu','xpu'): raise ValueError('Unsupported execution backend')
-    if requested=='xpu' and not torch.xpu.is_available(): raise RuntimeError('XPU unavailable. Check Intel driver and XPU PyTorch build, or select CPU.')
+    if requested=='xpu' and not torch.xpu.is_available():
+        if getattr(torch.version,'xpu',None) is None:
+            raise RuntimeError('XPU unavailable: this executable contains a CPU-only PyTorch wheel. Install the XPU portable build.')
+        raise RuntimeError('XPU unavailable: XPU PyTorch is installed but no Intel GPU is detected. Check the Intel graphics driver and runtime.')
     return 'xpu' if requested!='cpu' and torch.xpu.is_available() else 'cpu'
 
 class Timer:
