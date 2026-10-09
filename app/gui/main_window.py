@@ -148,6 +148,7 @@ class Window(QMainWindow):
         try:
             job=Job.resume(path); self.active_job=job; self.source.setText(job.record['source'])
             settings=job.record['settings']; self.backend.setCurrentText(settings['backend']); self.precision.setCurrentText(settings['precision']); self.model_kind.setCurrentText(settings.get('model_kind','quality')); self.compile.setChecked(settings.get('compile',False))
+            self.steps.setValue(settings.get('steps',20)); self.chunk.setValue(settings.get('chunk_seconds',12))
             self.run_conversion(job,job.record.get('output',self.output.text()))
         except Exception as exc: self.error(str(exc))
     def cancel(self):
