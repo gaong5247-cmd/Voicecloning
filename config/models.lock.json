@@ -1,0 +1,145 @@
+{
+  "Plachta/Seed-VC": {
+    "revision": "257283f9f41585055e8f858fba4fd044e5caed6e",
+    "files": {
+      ".gitattributes": null,
+      "DiT_seed_v2_uvit_whisper_base_f0_44k_bigvgan_pruned_ema.pth": "4145da6704ca0950c2ef6312c1cd0c15c370b13613faed2b4a9d9d71bb4ed036",
+      "DiT_seed_v2_uvit_whisper_base_f0_44k_bigvgan_pruned_ft_ema.pth": "883d19be9fe9c4bb2dce30d545cd77e5ed2b6326c7ed1c4d9a7ce8e555b163f9",
+      "DiT_seed_v2_uvit_whisper_base_f0_44k_bigvgan_pruned_ft_ema_v2.pth": "42aef93ffe65857c840d270252fa040f7ba04514945ec460f3ac1ac2a96de684",
+      "DiT_seed_v2_uvit_whisper_small_wavenet_bigvgan_pruned.pth": "8ec8841b20bb46df9f7e8e570a6946a4b87b940133c7f0e778487ff33841f720",
+      "DiT_uvit_tat_xlsr_ema.pth": "c853ea578b409f625f961bcb15d5cff1f8ef9a75f3209ec21d9b7c73ab422e88",
+      "README.md": null,
+      "config_dit_mel_seed_uvit_whisper_base_f0_44k.yml": null,
+      "config_dit_mel_seed_uvit_whisper_small_wavenet.yml": null,
+      "config_dit_mel_seed_uvit_xlsr_tiny.yml": null,
+      "config_dit_mel_seed_wavenet.yml": null,
+      "hifigan.yml": null,
+      "hift.pt": "91e679b6ca1eff71187ffb4f3ab0444935594cdcc20a9bd12afad111ef8d6012",
+      "se_db.pt": "a76e1ad4fac609cfa1a5198bf789427c5e7822d656fab1ffed6cd80fc0d381b7",
+      "v2/ar_base.pth": "42e2afabf97e5d856580af1f81a9705423b4fb21bb9475cece9925b62355cc5c",
+      "v2/cfm_small.pth": "73ae18615dc8cb01710086629973198226dedc63ebeaab0aee17863d767b3474"
+    },
+    "license": "gpl-3.0"
+  },
+  "funasr/campplus": {
+    "revision": "e4b6ede7ce16997aff4ae69fbca1f0175e2afede",
+    "files": {
+      ".gitattributes": null,
+      "README.md": null,
+      "campplus_cn_common.bin": "3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8",
+      "config.yaml": null,
+      "configuration.json": null,
+      "dingding.jpg": null,
+      "quickstart.md": null,
+      "structure.png": null
+    },
+    "license": "apache-2.0"
+  },
+  "openai/whisper-small": {
+    "revision": "973afd24965f72e36ca33b3055d56a652f456b4d",
+    "files": {
+      ".gitattributes": null,
+      "README.md": null,
+      "added_tokens.json": null,
+      "config.json": null,
+      "flax_model.msgpack": "c375de483cc3fef3050ee369779c112f177e99ef010bb52cc9a2e72f9d7b0a9d",
+      "generation_config.json": null,
+      "merges.txt": null,
+      "model.safetensors": "1d7734884874f1a1513ed9aa760a4f8e97aaa02fd6d93a3a85d27b2ae9ca596b",
+      "normalizer.json": null,
+      "preprocessor_config.json": null,
+      "pytorch_model.bin": "ea40d8f6c99cada3695b9ddec20d5ee228a58292650b79c94d8600f567bf9b37",
+      "special_tokens_map.json": null,
+      "tf_model.h5": "c3b6ee117c26323663f740fc55f83017d8ebb4eeddb7bdbcd1aca3e648bb48e7",
+      "tokenizer.json": null,
+      "tokenizer_config.json": null,
+      "vocab.json": null
+    },
+    "license": "apache-2.0"
+  },
+  "nvidia/bigvgan_v2_22khz_80band_256x": {
+    "revision": "633ff708ed5b74903e86ff1298cf4a98e921c513",
+    "files": {
+      ".gitattributes": null,
+      ".gitignore": null,
+      "LICENSE": null,
+      "README.md": null,
+      "activations.py": null,
+      "alias_free_activation/cuda/__init__.py": null,
+      "alias_free_activation/cuda/activation1d.py": null,
+      "alias_free_activation/cuda/anti_alias_activation.cpp": null,
+      "alias_free_activation/cuda/anti_alias_activation_cuda.cu": null,
+      "alias_free_activation/cuda/compat.h": null,
+      "alias_free_activation/cuda/load.py": null,
+      "alias_free_activation/cuda/type_shim.h": null,
+      "alias_free_activation/torch/__init__.py": null,
+      "alias_free_activation/torch/act.py": null,
+      "alias_free_activation/torch/filter.py": null,
+      "alias_free_activation/torch/resample.py": null,
+      "bigvgan.py": null,
+      "bigvgan_discriminator_optimizer.pt": "2d0960ae4abecc9a33cd989b8e124c13a436e54db8dc5ae32cd5a82e1bfc1a93",
+      "bigvgan_discriminator_optimizer_3msteps.pt": "3a6179837741c10337a8bd1a7fd2a2df3dfbc50d67c0be2c1567e09e58675d46",
+      "bigvgan_generator.pt": "e95ba25972d3de0628d99cd156e9315a9c018899bf739988959ebe3544080ced",
+      "bigvgan_generator_3msteps.pt": "ee7862b70ad758a26e61f9901f3d3cbd187c26ea52d8adf8bded12bfe0603edb",
+      "config.json": null,
+      "env.py": null,
+      "meldataset.py": null,
+      "nv-modelcard++/.gitkeep": null,
+      "nv-modelcard++/bias.md": null,
+      "nv-modelcard++/explainability.md": null,
+      "nv-modelcard++/overview.md": null,
+      "nv-modelcard++/privacy.md": null,
+      "nv-modelcard++/safety.md": null,
+      "utils.py": null
+    },
+    "license": "mit"
+  },
+  "speechbrain/sepformer-wsj02mix": {
+    "revision": "3a2826343a10e2d2e8a75f79aeab5ff3a2473531",
+    "files": {
+      ".gitattributes": null,
+      "README.md": null,
+      "brain.ckpt": "d9e24193f36931b7f57932532efbdcf64971f42732383ba6808825f77db258f6",
+      "config.json": null,
+      "decoder.ckpt": "abea1a2d41151331b4c36071d1b3205aed940a189721f008b12a703e9c63e7e4",
+      "encoder.ckpt": "3139bb880b29ea77ae8a168b8f2ad6e8eb5c2c0904289676c223d0e93cd2a35d",
+      "hyperparams.yaml": null,
+      "hyperparams_train.yaml": null,
+      "masknet.ckpt": "57dd5f49bf21c5a2101bb4e46648d05d34d517a59e26f0b06646d0bebe8214c7",
+      "test_mixture.wav": null
+    },
+    "license": "apache-2.0"
+  },
+  "speechbrain/spkrec-ecapa-voxceleb": {
+    "revision": "0f99f2d0ebe89ac095bcc5903c4dd8f72b367286",
+    "files": {
+      ".gitattributes": null,
+      "README.md": null,
+      "classifier.ckpt": "fd9e3634fe68bd0a427c95e354c0c677374f62b3f434e45b78599950d860d535",
+      "config.json": null,
+      "embedding_model.ckpt": "0575cb64845e6b9a10db9bcb74d5ac32b326b8dc90352671d345e2ee3d0126a2",
+      "example1.wav": null,
+      "example2.flac": null,
+      "hyperparams.yaml": null,
+      "label_encoder.txt": null,
+      "mean_var_norm_emb.ckpt": null
+    },
+    "license": "apache-2.0"
+  },
+  "pyannote/speaker-diarization-community-1": {
+    "revision": "3533c8cf8e369892e6b79ff1bf80f7b0286a54ee",
+    "files": {
+      ".gitattributes": null,
+      "README.md": null,
+      "config.yaml": null,
+      "diarization.gif": "0d925ad38995d89009260e493b0ae2e684c3e1397f495265ed841c45c4f73a35",
+      "embedding/README.md": null,
+      "embedding/pytorch_model.bin": "6f10ff60898a1d185fa22e1d11e0bfa8a92efec811f11bca48cb8cafebefd929",
+      "plda/README.md": null,
+      "plda/plda.npz": "9b77bcd840692710dd3496f62ecfeed8d8e5f002fd991b785079b244eab7d255",
+      "plda/xvec_transform.npz": "325f1ce8e48f7e55e9c8aa47e05d2766b7c48c4b25b8de8dd751e7a4cc5fbe8f",
+      "segmentation/pytorch_model.bin": "7ad24338d844fb95985486eb1a464e32d229f6d7a03c9abe60f978bacf3f816e"
+    },
+    "license": "cc-by-4.0"
+  }
+}

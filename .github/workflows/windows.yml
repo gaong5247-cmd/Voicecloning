@@ -1,0 +1,39 @@
+name: Windows Portable
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [cpu, xpu]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: 'requirements/*.txt'
+      - name: Build and smoke test portable EXE
+        shell: pwsh
+        run: ./scripts/build_windows.ps1 -Backend ${{ matrix.backend }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloneVoiceStudio-Windows-x64-${{ matrix.backend }}-Portable
+          path: dist/CloneVoiceStudio-Windows-x64-${{ matrix.backend }}-Portable.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-${{ matrix.backend }}
+          path: |
+            build/CloneVoiceStudio/warn-CloneVoiceStudio.txt
+            ~/AppData/Local/CloneVoiceStudio/logs/
