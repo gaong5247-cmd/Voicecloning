@@ -49,7 +49,7 @@ class Studio:
         tracks={s:np.zeros_like(wave) for s in speakers}; templates={}; review=[]
         separator=SepformerSeparation.from_hparams(source=str(model_dir('speechbrain/sepformer-wsj02mix')),
             savedir=str(self.directory/'separator'),run_opts={'device':'cpu'},
-            overrides={'pretrained_path':str(model_dir('speechbrain/sepformer-wsj02mix'))},local_strategy=LocalStrategy.COPY)
+            local_strategy=LocalStrategy.COPY)
         embedder=EncoderClassifier.from_hparams(source=str(model_dir('speechbrain/spkrec-ecapa-voxceleb')),
             savedir=str(self.directory/'embedder'),run_opts={'device':'cpu'},
             overrides={'pretrained_path':str(model_dir('speechbrain/spkrec-ecapa-voxceleb'))},local_strategy=LocalStrategy.COPY)

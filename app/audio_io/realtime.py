@@ -18,7 +18,7 @@ class Realtime:
     def start(self):
         import sounddevice as sd
         # Loading happens before opening devices, on the GUI worker.
-        self.engine.load(); self.engine.convert(np.zeros(self.engine.sample_rate),self.profile,self.steps)
+        self.engine.warm_profile(self.profile)
         self.capture=sd.InputStream(device=self.input_device,samplerate=self.sr,channels=1,
                                     dtype='float32',blocksize=int(self.sr*.02),callback=self._input)
         self.playback=sd.OutputStream(device=self.output_device,samplerate=self.sr,channels=1,

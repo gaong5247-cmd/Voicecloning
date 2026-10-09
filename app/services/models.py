@@ -15,8 +15,9 @@ def selected(repo, filename):
     if repo=='funasr/campplus': return filename=='campplus_cn_common.bin'
     if repo=='openai/whisper-small': return filename in ['config.json','preprocessor_config.json','model.safetensors']
     if repo.startswith('nvidia/'): return filename in ['config.json','bigvgan_generator.pt']
-    if repo.startswith('speechbrain/'): return filename.endswith(('.ckpt','.yaml','.txt','.py'))
-    return not filename.endswith(('.md','.gitattributes','.png','.jpg','.wav'))
+    if repo=='speechbrain/sepformer-wsj02mix': return filename in ['hyperparams.yaml','encoder.ckpt','decoder.ckpt','masknet.ckpt']
+    if repo=='speechbrain/spkrec-ecapa-voxceleb': return filename in ['hyperparams.yaml','embedding_model.ckpt','classifier.ckpt','mean_var_norm_emb.ckpt','label_encoder.txt']
+    return not filename.endswith(('.md','.gitattributes','.png','.jpg','.wav','.gif'))
 
 def download_group(group, token=None, progress=lambda message:None, cancelled=lambda:None):
     lock=json.loads((ROOT/'config/models.lock.json').read_text())

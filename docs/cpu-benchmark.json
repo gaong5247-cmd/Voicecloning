@@ -1,0 +1,39 @@
+{
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+  "torch": "2.8.0+cpu",
+  "threads": 4,
+  "fixture": "FFmpeg flite synthetic English, 4.38254s",
+  "steps": 6,
+  "input_samples": 96635,
+  "output_samples": 96512,
+  "results": [
+    {
+      "iteration": 0,
+      "wall_seconds": 30.75393601399992,
+      "stats": {
+        "cache_hits": 1,
+        "fallbacks": [],
+        "load_seconds": 6.029133747999367,
+        "inference_seconds": 22.28652333900027,
+        "rtf": 5.085298697417663,
+        "backend": "cpu",
+        "precision": "fp32"
+      }
+    },
+    {
+      "iteration": 1,
+      "wall_seconds": 26.769307427999593,
+      "stats": {
+        "cache_hits": 2,
+        "fallbacks": [],
+        "load_seconds": 6.029133747999367,
+        "inference_seconds": 26.7688572699999,
+        "rtf": 6.108069569032935,
+        "backend": "cpu",
+        "precision": "fp32"
+      }
+    }
+  ],
+  "quality": "not evaluated",
+  "xpu": "unavailable"
+}

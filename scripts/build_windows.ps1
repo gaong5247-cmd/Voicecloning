@@ -13,9 +13,11 @@ Run-Python launcher.py --smoke-test
 Remove-Item Env:QT_QPA_PLATFORM
 New-Item -ItemType Directory -Force bin | Out-Null
 if (-not (Test-Path bin/ffmpeg.exe)) {
-    Invoke-WebRequest 'https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-7.1.1-essentials_build.zip' -OutFile ffmpeg.zip
+    Invoke-WebRequest 'https://github.com/GyanD/codexffmpeg/releases/download/7.1.1/ffmpeg-7.1.1-essentials_build.zip' -OutFile ffmpeg.zip
     Expand-Archive ffmpeg.zip -DestinationPath ffmpeg-temp -Force
     Copy-Item (Get-ChildItem ffmpeg-temp -Filter ffmpeg.exe -Recurse | Select-Object -First 1).FullName bin/ffmpeg.exe
+    New-Item -ItemType Directory -Force ffmpeg-notices | Out-Null
+    Get-ChildItem ffmpeg-temp -Recurse -File | Where-Object { $_.Name -match 'LICENSE|README' } | Copy-Item -Destination ffmpeg-notices
     Remove-Item ffmpeg.zip
 }
 Run-Python -m PyInstaller --noconfirm --clean --onedir --windowed --name CloneVoiceStudio --paths vendor/seed_vc `
@@ -30,6 +32,9 @@ $smoke = Start-Process 'dist/CloneVoiceStudio/CloneVoiceStudio.exe' -ArgumentLis
 if ($smoke.ExitCode -ne 0) { throw "Frozen GUI smoke failed: $($smoke.ExitCode)" }
 Remove-Item Env:QT_QPA_PLATFORM
 Copy-Item README.md,LICENSE,THIRD_PARTY_NOTICES.md dist/CloneVoiceStudio/
+if (Test-Path ffmpeg-notices) { Copy-Item -Recurse ffmpeg-notices dist/CloneVoiceStudio/ }
+Run-Python -m pip freeze --exclude-editable | Out-File -Encoding utf8 dist/CloneVoiceStudio/dependency-versions.txt
+Copy-Item "$env:LOCALAPPDATA/CloneVoiceStudio/logs/app.log" dist/CloneVoiceStudio/ci-smoke.log -ErrorAction SilentlyContinue
 Copy-Item -Recurse docs dist/CloneVoiceStudio/docs -Force
 Copy-Item -Recurse vendor dist/CloneVoiceStudio/source-vendor -Force
 Copy-Item -Recurse app dist/CloneVoiceStudio/source-app -Force

@@ -25,6 +25,8 @@ class SeedEngine:
         vendor=ROOT/'vendor/seed_vc'
         if str(vendor) not in sys.path: sys.path.insert(0,str(vendor))
         import torch, seed_loader
+        import os
+        torch.set_num_threads(max(1,min(8,int(os.environ.get("CLONEVOICE_CPU_THREADS","4")))))
         seed_loader.device=torch.device(self.device)
         args=SimpleNamespace(fp16=False,f0_condition=False,checkpoint=None,config=None)
         with Timer(self.device) as timer, torch.inference_mode():
@@ -35,13 +37,17 @@ class SeedEngine:
             except Exception as exc: self.stats['fallbacks'].append('compile disabled: '+str(exc))
         self.loaded=True
     def unload(self):
-        if self.loaded:
-            self.refs.clear()
-            for key in ('model','semantic','f0','vocoder','campplus','mel'): delattr(self,key)
-            self.loaded=False
-            import gc, torch
-            gc.collect()
-            if self.device=='xpu': torch.xpu.empty_cache()
+        self.refs.clear()
+        for key in ('model','semantic','f0','vocoder','campplus','mel'):
+            if hasattr(self,key): delattr(self,key)
+        self.loaded=False
+        import gc, torch
+        gc.collect()
+        if self.device=='xpu': torch.xpu.empty_cache()
+    def warm_profile(self,profile):
+        import torch
+        with self.lock, torch.inference_mode():
+            self.load(); self.reference(profile)
     def reference(self, profile):
         import torch, torchaudio
         from app.audio_io.files import read_audio
@@ -80,9 +86,9 @@ class SeedEngine:
         if np.max(np.abs(wave))<1e-6: return np.zeros_like(wave)
         import torch
         with self.lock, torch.inference_mode():
-            self.load()
-            for attempt in range(3):
+            for attempt in range(4):
                 try:
+                    self.load()
                     with Timer(self.device) as timer:
                         out=self._convert(wave,profile,steps)
                     if not np.isfinite(out).all(): raise FloatingPointError('NaN/Inf in model output')
@@ -91,6 +97,9 @@ class SeedEngine:
                     if self.device=='xpu': self.stats['peak_allocated_bytes']=torch.xpu.max_memory_allocated()
                     return out
                 except (RuntimeError,FloatingPointError,NotImplementedError) as exc:
+                    if self.compile_model:
+                        self.unload(); self.compile_model=False
+                        self.stats['fallbacks'].append('Disable compile after runtime failure: '+str(exc)); self.load(); continue
                     if self.precision!='fp32':
                         self.precision='fp32'; self.stats['fallbacks'].append('Retry FP32: '+str(exc)); continue
                     if self.device=='xpu':

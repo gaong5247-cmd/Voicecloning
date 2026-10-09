@@ -446,7 +446,9 @@ def load_checkpoint(
                 if k in model_state_dict and v.shape == model_state_dict[k].shape
             }
             skipped_keys = set(params[key].keys()) - set(filtered_state_dict.keys())
-            if skipped_keys - {"input_pos"}:
+            # V1 checkpoint contains inactive F0 weights and regenerated position buffer.
+            allowed_unused = {"estimator.f0_embedder.weight", "estimator.input_pos"}
+            if skipped_keys - allowed_unused:
                 raise RuntimeError(f"Checkpoint shape mismatch: {skipped_keys}")
             if skipped_keys:
                 print(

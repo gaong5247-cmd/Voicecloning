@@ -29,11 +29,17 @@ jobs:
           path: dist/CloneVoiceStudio-Windows-x64-${{ matrix.backend }}-Portable.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Gather validation logs
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force validation | Out-Null
+          Copy-Item "$env:LOCALAPPDATA/CloneVoiceStudio/logs/*" validation/ -ErrorAction SilentlyContinue
+          Copy-Item build/CloneVoiceStudio/warn-CloneVoiceStudio.txt validation/ -ErrorAction SilentlyContinue
       - name: Upload validation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: validation-${{ matrix.backend }}
           path: |
-            build/CloneVoiceStudio/warn-CloneVoiceStudio.txt
-            ~/AppData/Local/CloneVoiceStudio/logs/
+            validation/

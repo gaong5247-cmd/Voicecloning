@@ -69,7 +69,7 @@ class Window(QMainWindow):
     def message(self,text): self.log.append(text)
     def task(self,func,done=None):
         if self.worker and self.worker.isRunning(): self.message('A task is already running / 작업 중임'); return
-        if self.rt and self.rt.stop_event.is_set()==False:
+        if self.rt and (not self.rt.stop_event.is_set() or (getattr(self.rt,'worker',None) and self.rt.worker.is_alive())):
             self.message('Stop realtime first / 실시간 변환부터 중지'); return
         self.progress.setValue(0); self.worker=Worker(func)
         self.worker.progress.connect(lambda f,m:(self.progress.setValue(int(f*100)),self.message(m)))
@@ -77,9 +77,10 @@ class Window(QMainWindow):
         self.worker.start()
     def error(self,text):
         self.message(text); QMessageBox.warning(self,'작업 실패 / Task failed',text+'\n\nDiagnostics 로그 확인 · 모델 다운로드/파일/장치/출력 경로를 확인하세요')
-    def ensure_engine(self):
+    def engine_options(self):
+        return (self.backend.currentText(),self.precision.currentText(),self.compile.isChecked())
+    def ensure_engine(self,key):
         from app.engine.seed import SeedEngine
-        key=(self.backend.currentText(),self.precision.currentText(),self.compile.isChecked())
         if key!=self.engine_key:
             if self.engine: self.engine.unload()
             self.engine=SeedEngine(*key); self.engine_key=key
@@ -130,9 +131,10 @@ class Window(QMainWindow):
         job=Job(source,ident,settings); self.active_job=job
         self.run_conversion(job,output)
     def run_conversion(self,job,output):
+        key=self.engine_options()
         def work(progress):
             from app.engine.inference import convert_file
-            return convert_file(self.ensure_engine(),job.record['source'],self.profiles.get(job.record['profile']),output,job,progress)
+            return convert_file(self.ensure_engine(key),job.record['source'],self.profiles.get(job.record['profile']),output,job,progress)
         self.task(work,lambda r:(setattr(self,'last_output',output),self.message(json.dumps(r['metrics'],ensure_ascii=False,indent=2))))
     def resume(self):
         path=QFileDialog.getOpenFileName(self,'Resume session',str(DATA/'sessions'),'Session (session.json)')[0]
@@ -191,12 +193,16 @@ class Window(QMainWindow):
         if not ident: self.error('Create a Voice Profile first'); return
         profile=self.profiles.get(ident); inp=self.input_device.currentData(); out=self.output_device.currentData()
         sr=int(self.rt_sr.currentText()); chunk=self.rt_chunk.value(); steps=self.rt_steps.value(); gate=self.rt_gate.value(); gain=self.rt_gain.value()
+        key=self.engine_options()
         def work(p):
-            self.rt=Realtime(self.ensure_engine(),profile,inp,out,sr,chunk,steps,gate,gain); self.rt.start(); return self.rt
+            self.rt=Realtime(self.ensure_engine(key),profile,inp,out,sr,chunk,steps,gate,gain); self.rt.start(); return self.rt
         self.task(work,lambda r:self.message('Realtime stream started; use headphones / 이어폰 권장'))
     def stop_rt(self):
         if self.rt:
-            self.rt.stop(); self.message('Realtime stopped'); self.rt=None
+            self.rt.stop()
+            if getattr(self.rt,'worker',None) and self.rt.worker.is_alive():
+                self.message('Realtime stopping after current block; wait before starting another task')
+            else: self.message('Realtime stopped'); self.rt=None
     def build_devices(self):
         l=self.page('Audio Devices / 오디오 장치','CABLE Input은 프로그램 출력 장치, CABLE Output은 카카오톡·Discord의 마이크 장치임.')
         l.addWidget(button('Refresh / 새로고침',self.refresh_devices)); self.devices_text=QTextEdit(); self.devices_text.setReadOnly(True); l.addWidget(self.devices_text)
@@ -349,7 +355,8 @@ class Window(QMainWindow):
                 'profile':self.assignment.cellWidget(i,1).currentData(),'gain':self.assignment.cellWidget(i,2).value()}
         project.save(); output=QFileDialog.getSaveFileName(self,'Output WAV','','WAV (*.wav)')[0]
         if output:
-            def work(p): return project.render(self.ensure_engine(),self.profiles,output,self.steps.value(),lambda m:p(0,m),self.check_cancel)
+            key=self.engine_options(); steps=self.steps.value()
+            def work(p): return project.render(self.ensure_engine(key),self.profiles,output,steps,lambda m:p(0,m),self.check_cancel)
             self.task(work,lambda r:(setattr(self,'last_output',output),self.refresh_studio(),self.message('Studio output saved')))
     def tick(self):
         if self.rt:

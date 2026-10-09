@@ -135,7 +135,7 @@ def load_models(args):
 
         def semantic_fn(waves_16k):
             ori_inputs = whisper_feature_extractor([waves_16k.squeeze(0).cpu().numpy()],
-                                                   return_tensors="pt",
+                                                   return_tensors="pt", sampling_rate=16000,
                                                    return_attention_mask=True)
             ori_input_features = whisper_model._mask_input_features(
                 ori_inputs.input_features, attention_mask=ori_inputs.attention_mask).to(device)
