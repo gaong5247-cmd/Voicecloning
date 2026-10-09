@@ -108,6 +108,32 @@ def test_cancel_keeps_session(audio,tmp_path):
     with pytest.raises(Cancelled): convert_file(TestEngine(),path,profile,tmp_path/'result.wav',job)
     assert job.record['state']=='cancelled'
 
+def test_cancel_mid_chunk_is_promptly_propagated(audio,tmp_path):
+    path,_,_=audio
+    profile=Profiles(tmp_path/'profiles').create('test',path,True)
+    job=Job(path,profile['id'],{'chunk_seconds':1,'steps':20},tmp_path/'sessions')
+    class CooperativeEngine(TestEngine):
+        supports_cancellation=True
+        def convert(self,wave,profile,steps,check_cancel=None):
+            self.calls+=1
+            assert check_cancel is not None
+            job.cancelled.set()
+            check_cancel()  # Simulates Seed-VC diffusion-step callback
+            return wave
+    engine=CooperativeEngine()
+    with pytest.raises(Cancelled): convert_file(engine,path,profile,tmp_path/'result.wav',job)
+    assert engine.calls==1
+    assert job.record['state']=='cancelled'
+    assert not job.record['chunks']
+
+
+def test_cpu_half_precision_normalized():
+    from app.engine.seed import SeedEngine
+    engine=SeedEngine(backend='cpu',precision='fp16',model_kind='tiny')
+    assert engine.precision=='fp32'
+    assert any('CPU fp16' in line for line in engine.stats['fallbacks'])
+
+
 def test_source_immutable(audio,tmp_path):
     path,_,_=audio; profiles=Profiles(tmp_path/'profiles'); profile=profiles.create('test',path,True)
     job=Job(path,profile['id'],{},tmp_path/'sessions'); before=digest(path)
