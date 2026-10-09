@@ -80,7 +80,7 @@ class Window(QMainWindow):
     def error(self,text):
         self.message(text); QMessageBox.warning(self,'작업 실패 / Task failed',text+'\n\nDiagnostics 로그 확인 · 모델 다운로드/파일/장치/출력 경로를 확인하세요')
     def engine_options(self):
-        return (self.backend.currentText(),self.precision.currentText(),self.compile.isChecked())
+        return (self.backend.currentText(),self.precision.currentText(),self.compile.isChecked(),self.model_kind.currentText())
     def ensure_engine(self,key):
         from app.engine.seed import SeedEngine
         if key!=self.engine_key:
@@ -107,6 +107,7 @@ class Window(QMainWindow):
         self.steps=spin(1,100,20); form.addRow('Diffusion Steps',self.steps)
         self.chunk=spin(1,18,12); form.addRow('Chunk seconds',self.chunk)
         self.backend=QComboBox(); self.backend.addItems(['auto','xpu','cpu']); form.addRow('Backend',self.backend)
+        self.model_kind=QComboBox(); self.model_kind.addItems(['quality','tiny']); form.addRow('Seed model',self.model_kind)
         self.precision=QComboBox(); self.precision.addItems(['fp32','fp16','bf16']); form.addRow('Precision',self.precision)
         self.compile=QCheckBox('Experimental torch.compile (compiler needed; unverified)'); form.addRow(self.compile)
         unsupported=QLabel('Pitch / F0 / Formant / Batch: disabled — current 22k V1 model is not F0-conditioned.\nNoise reduction and loudness normalization are not implemented. Output peak limiting is enabled.')
@@ -178,7 +179,7 @@ class Window(QMainWindow):
         if current: self.profile_combo.setCurrentIndex(self.profile_combo.findData(current))
         self.profile_list.setPlainText(json.dumps(entries,indent=2,ensure_ascii=False))
     def build_realtime(self):
-        l=self.page('Realtime / 실시간 변환','Buffered V1 preview: 지연이 큼. 가상 오디오 장치는 별도 설치해야 함. 오디오 콜백에서는 추론하지 않음.')
+        l=self.page('Realtime / 실시간 변환','Tiny XLSR/HiFT preview: realtime 모델 다운로드 필요. 장치 실측 전에는 지연 보장 없음. 가상 오디오 장치는 별도 설치해야 함. 오디오 콜백에서는 추론하지 않음.')
         form=QFormLayout(); self.input_device=QComboBox(); self.output_device=QComboBox(); self.rt_profile=QComboBox()
         form.addRow('Microphone / 마이크',self.input_device); form.addRow('Output / 출력',self.output_device); form.addRow('Profile',self.rt_profile)
         self.rt_sr=QComboBox(); self.rt_sr.addItems(['48000','44100']); form.addRow('Sample rate',self.rt_sr)
@@ -195,7 +196,7 @@ class Window(QMainWindow):
         if not ident: self.error('Create a Voice Profile first'); return
         profile=self.profiles.get(ident); inp=self.input_device.currentData(); out=self.output_device.currentData()
         sr=int(self.rt_sr.currentText()); chunk=self.rt_chunk.value(); steps=self.rt_steps.value(); gate=self.rt_gate.value(); gain=self.rt_gain.value()
-        key=self.engine_options()
+        key=(*self.engine_options()[:3],'tiny')
         def work(p):
             self.rt=Realtime(self.ensure_engine(key),profile,inp,out,sr,chunk,steps,gate,gain); self.rt.start(); return self.rt
         self.task(work,lambda r:self.message('Realtime stream started; use headphones / 이어폰 권장'))
@@ -221,7 +222,7 @@ class Window(QMainWindow):
         except Exception as exc: self.devices_text.setPlainText(str(exc))
     def build_models(self):
         l=self.page('Model Manager / 모델 관리','명시적으로 다운로드한 모델만 로컬 추론에 사용함. 오디오 파일은 업로드하지 않음.')
-        self.model_group=QComboBox(); self.model_group.addItems(['voice','separation','diarization']); l.addWidget(self.model_group)
+        self.model_group=QComboBox(); self.model_group.addItems(['voice','realtime','separation','diarization']); l.addWidget(self.model_group)
         self.token=QLineEdit(); self.token.setEchoMode(QLineEdit.Password); self.token.setPlaceholderText('Hugging Face token (not saved) — Community-1 requires model access consent'); l.addWidget(self.token)
         self.model_agree=QCheckBox('모델 라이선스/접근 조건을 확인했음 / Reviewed model licenses and access terms'); l.addWidget(self.model_agree)
         l.addWidget(button('Community-1 terms',lambda:QDesktopServices.openUrl(QUrl('https://huggingface.co/pyannote/speaker-diarization-community-1'))))
@@ -249,7 +250,7 @@ class Window(QMainWindow):
     def benchmark(self):
         ident=self.profile_combo.currentData(); source=self.source.text()
         if not ident or not source: self.error('Select reference and source on Advanced Inference'); return
-        steps=self.steps.value()
+        steps=self.steps.value(); model_kind=self.model_kind.currentText()
         def work(p):
             from app.engine.seed import SeedEngine
             from app.audio_io.files import read_audio
@@ -258,7 +259,7 @@ class Window(QMainWindow):
             wave,sr=read_audio(source); wave=wave[:sr*3]; results=[]; profile=self.profiles.get(ident)
             choices=[('cpu','fp32')]+([('xpu',prec) for prec in ['fp32','fp16','bf16']] if torch.xpu.is_available() else [])
             for backend,prec in choices:
-                p(0,backend+' '+prec); engine=SeedEngine(backend,prec)
+                p(0,backend+' '+prec); engine=SeedEngine(backend,prec,model_kind=model_kind)
                 try:
                     first=time.perf_counter(); engine.convert(wave,profile,steps); first=time.perf_counter()-first
                     engine.convert(wave,profile,steps)

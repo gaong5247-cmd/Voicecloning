@@ -1,0 +1,18 @@
+{
+  "scenario": "two synthetic speakers, manual ground-truth diarization, actual separation and different voice profiles",
+  "render_seconds": 100.40437949100033,
+  "output_seconds": 6.0,
+  "finite": true,
+  "rms": 0.1701439619064331,
+  "engine": {
+    "cache_hits": 3,
+    "fallbacks": [],
+    "load_seconds": 12.088050267000654,
+    "inference_seconds": 25.04799148300026,
+    "rtf": 12.52399574150013,
+    "backend": "cpu",
+    "precision": "fp32"
+  },
+  "quality": "not listening-scored",
+  "automatic_diarization": "not tested (gated model unavailable)"
+}

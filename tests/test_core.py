@@ -120,7 +120,7 @@ def test_model_weight_corruption(tmp_path,monkeypatch):
     atomic_json(root/'config/models.lock.json',{'repo':{'files':{'model.ckpt':'0'*64},'revision':'a'*40}})
     monkeypatch.setattr(models,'ROOT',root); monkeypatch.setitem(models.GROUPS,'test',['repo'])
     monkeypatch.setattr(models,'model_dir',lambda repo:tmp_path/'models')
-    monkeypatch.setattr(models,'selected',lambda repo,file:True)
+    monkeypatch.setattr(models,'selected',lambda repo,file,group=None:True)
     (tmp_path/'models').mkdir(); (tmp_path/'models/model.ckpt').write_bytes(b'corrupt')
     with pytest.raises(RuntimeError,match='integrity'): models.check_group('test')
 

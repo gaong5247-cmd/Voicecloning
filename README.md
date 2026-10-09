@@ -6,7 +6,7 @@ Windows desktop application for local, zero-shot voice conversion. **Preview, no
 
 [Actions → Windows Portable](https://github.com/gaong5247-cmd/Voicecloning/actions/workflows/windows.yml). Download the CPU or XPU artifact after its build succeeds, unzip, and run `CloneVoiceStudio.exe`. Python is bundled. Model weights are not bundled. Intel graphics drivers are still required. CI GUI startup does not prove voice conversion or XPU operation.
 
-1. Model Manager → `voice` → review license confirmation → Download.
+1. Model Manager → `voice` for quality file conversion, `realtime` for tiny model → review license confirmation → Download.
 2. Voice Profiles → clean reference recording, name, usage permission confirmation → Create.
 3. Advanced Inference → source file, profile, backend and output WAV → Convert.
 4. Playback uses the Windows default media player. Video remux preserves the encoded video stream and replaces the audio with AAC.
@@ -34,11 +34,11 @@ CLI: `python launcher.py --diagnose`; `--download voice`; create a profile with 
 
 - PySide6 desktop UI, bilingual navigation and bilingual controls; dark/light theme.
 - WAV/MP3/FLAC/OGG/M4A/MP4/MKV decoding (FFmpeg for compressed/video fallback), WAV output and video remux.
-- Seed-VC V1 22.05kHz zero-shot conversion, bounded chunks, reference feature disk cache, profiles and explicit permission check.
+- Seed-VC V1 quality (Whisper/BigVGAN) and tiny (XLSR/HiFT) 22.05kHz zero-shot conversion, bounded chunks, reference feature disk cache, profiles and explicit permission check.
 - CPU / XPU device selection, FP32 / FP16 / BF16, model load and inference timing, safe precision / CPU retries.
 - Download manager: immutable upstream model revisions and SHA256 verification of large weight files.
 - Persistent cancellable inference sessions; validated completed chunk reuse on resume.
-- Experimental buffered microphone → worker → output stream with bounded rings, overload counters, noise gate, mute, original monitor and software latency estimate. This uses the **file V1 model**, not the optimized tiny streaming engine; hardware latency is unmeasured.
+- Experimental buffered microphone → worker → output stream with bounded rings, overload counters, noise gate, mute, original monitor and software latency estimate. This uses the **tiny XLSR/HiFT model** with buffered inference, context padding and worker scheduling; hardware latency is unmeasured.
 - Community-1 local CPU diarization adapter, editable turn table and colored overlap timeline.
 - SepFormer 2-source CPU separation on overlapping regions only, ECAPA source permutation matching, cached results, original preservation on uncertain matching. SepFormer and ECAPA model inference and synthetic overlap-track reconstruction have been tested on Linux CPU; real-room/Korean and Windows tests remain required.
 - Speaker-profile assignment, track gain, timeline reconstruction and mixing. Review blocks rendering when source identity is uncertain; preview the separated sources, manually match/swap their IDs or explicitly keep that overlap original.

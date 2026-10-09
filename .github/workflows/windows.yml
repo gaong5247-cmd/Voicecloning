@@ -29,6 +29,7 @@ jobs:
           path: dist/CloneVoiceStudio-Windows-x64-${{ matrix.backend }}-Portable.zip
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
       - name: Gather validation logs
         if: always()
         shell: pwsh

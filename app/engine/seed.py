@@ -13,7 +13,9 @@ class SeedEngine:
     sample_rate=22050
     capabilities={'pitch':False,'formant':False,'f0':False,'batch':False,'steps':True,
                   'precision':True,'openvino':False,'npu':False}
-    def __init__(self, backend='auto', precision='fp32', compile_model=False):
+    def __init__(self, backend='auto', precision='fp32', compile_model=False, model_kind='quality'):
+        if model_kind not in ('quality','tiny'): raise ValueError('Unknown model variant')
+        self.model_kind=model_kind
         self.device=select_device(backend)
         self.precision=precision; self.compile_model=compile_model
         if precision not in ('fp32','fp16','bf16'): raise ValueError('Unknown precision')
@@ -21,7 +23,7 @@ class SeedEngine:
         self.refs={}
     def load(self):
         if self.loaded: return
-        check_group('voice')
+        check_group('realtime' if self.model_kind=='tiny' else 'voice')
         vendor=ROOT/'vendor/seed_vc'
         if str(vendor) not in sys.path: sys.path.insert(0,str(vendor))
         import torch, seed_loader
@@ -29,6 +31,10 @@ class SeedEngine:
         torch.set_num_threads(max(1,min(8,int(os.environ.get("CLONEVOICE_CPU_THREADS","4")))))
         seed_loader.device=torch.device(self.device)
         args=SimpleNamespace(fp16=False,f0_condition=False,checkpoint=None,config=None)
+        if self.model_kind=='tiny':
+            from app.services.models import model_dir
+            args.checkpoint=str(model_dir('Plachta/Seed-VC')/'DiT_uvit_tat_xlsr_ema.pth')
+            args.config=str(model_dir('Plachta/Seed-VC')/'config_dit_mel_seed_uvit_xlsr_tiny.yml')
         with Timer(self.device) as timer, torch.inference_mode():
             (self.model,self.semantic,self.f0,self.vocoder,self.campplus,self.mel,self.mel_args)=seed_loader.load_models(args)
         self.stats['load_seconds']=timer.seconds
@@ -52,7 +58,7 @@ class SeedEngine:
         import torch, torchaudio
         from app.audio_io.files import read_audio
         sha=digest(profile['reference'])
-        key=MODEL_VERSION+'-'+sha
+        key=MODEL_VERSION+'-'+self.model_kind+'-'+sha
         if key in self.refs: self.stats['cache_hits']+=1; return self.refs[key]
         path=Path(profile['reference']).parent/'features'/f'{key}.npz'
         if path.exists():
@@ -93,7 +99,7 @@ class SeedEngine:
                         out=self._convert(wave,profile,steps)
                     if not np.isfinite(out).all(): raise FloatingPointError('NaN/Inf in model output')
                     self.stats.update(inference_seconds=timer.seconds,rtf=timer.seconds/(len(wave)/self.sample_rate),
-                        backend=self.device,precision=self.precision)
+                        backend=self.device,precision=self.precision,model_kind=self.model_kind)
                     if self.device=='xpu': self.stats['peak_allocated_bytes']=torch.xpu.max_memory_allocated()
                     return out
                 except (RuntimeError,FloatingPointError,NotImplementedError) as exc:

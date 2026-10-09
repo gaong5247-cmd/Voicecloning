@@ -12,9 +12,11 @@
 - Further repeat conversion with persisted reference cache: cache hits 1 then 2, model conversion 22.28652 then 26.76886 seconds. RTF 5.08530 then 6.10807. Shared-runner contention affects these results. See cpu-benchmark.json for full measurements.
 - SpeechBrain and pyannote.audio runtime imports passed. Real SepFormer 2-second CPU inference returned [1,16000,2] finite samples in 2.56283s. ECAPA returned [1,1,192] finite embeddings. A 6-second synthetic English two-speaker fixture with manual ground-truth turns completed overlap-only separation, source matching and two-track reconstruction in 9.02412s. Best-permutation mean SI-SDR improvement was 8.85616dB on that single fixture only. No automatic diarization or Korean accuracy conclusion follows. Full scores are in separation-benchmark.json.
 
+Real studio render: independently assigned synthetic voice profiles to both reconstructed tracks, actual Seed-VC conversion and final mixing completed. Output exactly 6.0s, finite waveform, render 100.40438s on shared Linux CPU. Manual ground-truth diarization; automatic gated Community-1 unavailable in this runner. See studio-validation.json.
+
 ## Build status
 
-Initial GitHub Actions run 37947640028: Windows CPU dependency installation, tests and GUI source smoke passed; packaging blocked by FFmpeg download URL 404. URL corrected to the verified GitHub release asset; next run pending. No completed EXE artifact is claimed yet.
+Initial GitHub Actions run 37947640028: Windows CPU dependency installation, tests and GUI source smoke passed; packaging blocked by FFmpeg download URL 404. URL corrected to the verified GitHub release asset; next run pending. Second CPU run 37948482938 built the EXE and passed frozen GUI startup, then PowerShell Compress-Archive failed with Stream was too long. Replaced with streaming ZIP64 creation and integrity validation. No completed portable ZIP artifact is claimed yet.
 
 ## Not verified / not supported
 

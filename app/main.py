@@ -4,13 +4,16 @@ from app.config import DATA, configure_offline, VERSION
 def main():
     parser=argparse.ArgumentParser(description='CloneVoice Studio')
     parser.add_argument('--diagnose',action='store_true'); parser.add_argument('--smoke-test',action='store_true')
-    parser.add_argument('--download',choices=['voice','separation','diarization'])
+    parser.add_argument('--download',choices=['voice','realtime','separation','diarization'])
     parser.add_argument('--engine-import-test',action='store_true')
     parser.add_argument('--source'); parser.add_argument('--profile'); parser.add_argument('--output')
     parser.add_argument('--reference'); parser.add_argument('--consent',action='store_true')
     parser.add_argument('--backend',default='auto',choices=['auto','cpu','xpu']); parser.add_argument('--precision',default='fp32',choices=['fp32','fp16','bf16'])
+    parser.add_argument('--model',default='quality',choices=['quality','tiny'])
     parser.add_argument('--steps',type=int,default=20); args=parser.parse_args()
     DATA.mkdir(parents=True,exist_ok=True); (DATA/'logs').mkdir(exist_ok=True)
+    if sys.stdout is None: sys.stdout=open(DATA/'logs'/'stdout.log','a',encoding='utf-8',buffering=1)
+    if sys.stderr is None: sys.stderr=open(DATA/'logs'/'stderr.log','a',encoding='utf-8',buffering=1)
     logging.basicConfig(filename=DATA/'logs'/'app.log',level=logging.INFO,format='%(asctime)s %(levelname)s %(message)s')
     configure_offline()
     try:
@@ -44,7 +47,7 @@ def main():
             from app.engine.seed import SeedEngine
             from app.engine.inference import convert_file
             job=Job(args.source,args.profile,{'steps':args.steps,'chunk_seconds':12,'backend':args.backend,'precision':args.precision})
-            result=convert_file(SeedEngine(args.backend,args.precision),args.source,Profiles().get(args.profile),args.output,job,
+            result=convert_file(SeedEngine(args.backend,args.precision,model_kind=args.model),args.source,Profiles().get(args.profile),args.output,job,
                                 lambda f,m:print(f'{f:.0%} {m}'))
             print(json.dumps(result['metrics'],indent=2)); return 0
         from PySide6.QtWidgets import QApplication

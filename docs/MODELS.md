@@ -24,3 +24,5 @@ Primary sources:
 - https://huggingface.co/pyannote/speaker-diarization-community-1
 - https://docs.pytorch.org/docs/stable/notes/get_start_xpu.html
 - https://docs.pytorch.org/tutorials/unstable/inductor_windows.html
+
+Tiny adapter: 384 channels, 9 diffusion blocks, XLSR-300M encoder restricted to first 12 layers, HiFT vocoder. Semantic encoding stays FP32, diffusion supports selectable autocast precision. Uses the original Seed-VC tiny checkpoint and immutable Facebook XLSR weights (Apache-2.0). Real-time model download is separate. Performance is pending a model-backed test; no XPU latency claim.

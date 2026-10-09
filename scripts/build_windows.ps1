@@ -41,7 +41,10 @@ Copy-Item -Recurse docs dist/CloneVoiceStudio/docs -Force
 Copy-Item -Recurse vendor dist/CloneVoiceStudio/source-vendor -Force
 Copy-Item -Recurse app dist/CloneVoiceStudio/source-app -Force
 Copy-Item launcher.py dist/CloneVoiceStudio/
+Copy-Item -Recurse scripts dist/CloneVoiceStudio/source-scripts -Force
+Copy-Item -Recurse requirements dist/CloneVoiceStudio/source-requirements -Force
+Copy-Item -Recurse config dist/CloneVoiceStudio/source-config -Force
 Copy-Item config/settings.template.json dist/CloneVoiceStudio/settings.template.json
 $zip="CloneVoiceStudio-Windows-x64-$Backend-Portable.zip"
-Compress-Archive -Path dist/CloneVoiceStudio -DestinationPath "dist/$zip" -Force
+Run-Python scripts/package.py dist/CloneVoiceStudio "dist/$zip"
 Write-Host "Built dist/$zip. GPU inference not validated by this build."

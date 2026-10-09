@@ -1,5 +1,6 @@
 # Adapted from Seed-VC 51383ef (GPL-3.0): offline loader, FP32 semantic encoder, explicit device.
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -101,10 +102,10 @@ def load_models(args):
     elif vocoder_type == 'hifigan':
         from modules.hifigan.generator import HiFTGenerator
         from modules.hifigan.f0_predictor import ConvRNNF0Predictor
-        hift_config = yaml.safe_load(open('configs/hifigan.yml', 'r'))
+        hift_config = yaml.safe_load(open(Path(__file__).parent / 'configs/hifigan.yml', 'r'))
         hift_gen = HiFTGenerator(**hift_config['hift'], f0_predictor=ConvRNNF0Predictor(**hift_config['f0_predictor']))
-        hift_path = load_custom_model_from_hf("FunAudioLLM/CosyVoice-300M", 'hift.pt', None)
-        hift_gen.load_state_dict(torch.load(hift_path, map_location='cpu'))
+        hift_path = load_custom_model_from_hf("Plachta/Seed-VC", 'hift.pt', None)
+        hift_gen.load_state_dict(torch.load(hift_path, map_location='cpu', weights_only=True))
         hift_gen.eval()
         hift_gen.to(device)
         vocoder_fn = hift_gen
@@ -174,7 +175,7 @@ def load_models(args):
                                                   sampling_rate=16000).to(device)
             with torch.no_grad():
                 ori_outputs = hubert_model(
-                    ori_inputs.input_values.half(),
+                    ori_inputs.input_values.float(),
                 )
             S_ori = ori_outputs.last_hidden_state.float()
             return S_ori
@@ -185,12 +186,12 @@ def load_models(args):
         )
         model_name = config['model_params']['speech_tokenizer']['name']
         output_layer = config['model_params']['speech_tokenizer']['output_layer']
-        wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_name)
-        wav2vec_model = Wav2Vec2Model.from_pretrained(model_name)
+        wav2vec_feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model_dir(model_name), local_files_only=True)
+        wav2vec_model = Wav2Vec2Model.from_pretrained(model_dir(model_name), local_files_only=True)
         wav2vec_model.encoder.layers = wav2vec_model.encoder.layers[:output_layer]
         wav2vec_model = wav2vec_model.to(device)
         wav2vec_model = wav2vec_model.eval()
-        wav2vec_model = wav2vec_model.half()
+        wav2vec_model = wav2vec_model.float()
 
         def semantic_fn(waves_16k):
             ori_waves_16k_input_list = [
@@ -204,7 +205,7 @@ def load_models(args):
                                                    sampling_rate=16000).to(device)
             with torch.no_grad():
                 ori_outputs = wav2vec_model(
-                    ori_inputs.input_values.half(),
+                    ori_inputs.input_values.float(),
                 )
             S_ori = ori_outputs.last_hidden_state.float()
             return S_ori
