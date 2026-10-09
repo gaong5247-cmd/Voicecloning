@@ -47,7 +47,7 @@ class Studio:
         if not speakers: raise ValueError('Run diarization or add manual turns first')
         for t in turns:
             if not 0<=t['start']<t['end']<=len(wave)/sr+.001: raise ValueError('Invalid timeline region')
-        tracks={s:np.zeros_like(wave) for s in speakers}; templates={}; review=[]
+        tracks={s:np.zeros_like(wave) for s in speakers}; templates={}; review=[]; source_sha=digest(self.data['source'])
         separator=SepformerSeparation.from_hparams(source=str(model_dir('speechbrain/sepformer-wsj02mix')),
             savedir=str(self.directory/'separator'),run_opts={'device':'cpu'},
             local_strategy=LocalStrategy.NO_LINK)
@@ -71,7 +71,7 @@ class Studio:
                     # Preserve only once, not once per speaker; users review unsupported regions.
                     tracks[ids[0]][a:b]=wave[a:b]; review.append({**span,'reason':'unsupported overlap (2 speakers, <=20s only); original preserved once'}); continue
                 left=max(0,a-int(.5*sr)); right=min(len(wave),b+int(.5*sr))
-                key=digest(self.data['source'])+f'-{left}-{right}-sepformer-v1'
+                key=source_sha+f'-{left}-{right}-sepformer-v1'
                 cache=self.directory/(key+'.npz')
                 try:
                     if cache.exists():
@@ -119,6 +119,7 @@ class Studio:
         path=self.directory/f'review_{index}_source_{source}.wav'; write_audio(path,wave,22050); return path
     def render(self,engine,profiles,output,steps=20,progress=lambda m:None,check=lambda:None):
         if any(r.get('resolved')!='keep_original' for r in self.data['review']): raise ValueError('Resolve or remove uncertain overlap regions before voice conversion. Original tracks are available for review.')
+        self.data['models']['conversion']={'variant':engine.model_kind,'backend':engine.device,'precision':engine.precision,'steps':steps} if hasattr(engine,'model_kind') else {'variant':'test double'}
         wave,sr=read_audio(self.data['source'],engine.sample_rate); mixed=np.zeros_like(wave)
         for speaker,path in self.data['tracks'].items():
             check(); settings=self.data['assignments'].get(speaker,{})

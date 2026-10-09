@@ -46,7 +46,7 @@ def main():
             from app.services.jobs import Job
             from app.engine.seed import SeedEngine
             from app.engine.inference import convert_file
-            job=Job(args.source,args.profile,{'steps':args.steps,'chunk_seconds':12,'backend':args.backend,'precision':args.precision})
+            job=Job(args.source,args.profile,{'steps':args.steps,'chunk_seconds':12,'backend':args.backend,'precision':args.precision,'model_kind':args.model})
             result=convert_file(SeedEngine(args.backend,args.precision,model_kind=args.model),args.source,Profiles().get(args.profile),args.output,job,
                                 lambda f,m:print(f'{f:.0%} {m}'))
             print(json.dumps(result['metrics'],indent=2)); return 0

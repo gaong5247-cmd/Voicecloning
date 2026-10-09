@@ -25,3 +25,5 @@ Windows physical audio devices, frozen-model inference, virtual-cable routing, I
 OpenVINO / NPU / INT8 / 3-speaker separation are not implemented. No <100ms latency claim. No production-release or full-spec-completion claim.
 
 Tiny XLSR/HiFT CPU model test: 4.38254s synthetic English input, 6 steps, FP32. 15.38006s first wall time, 3.28396s load, 9.55313s inference, RTF 2.17982; finite output, raw output 4.37696s. This remains slower than realtime on this shared CPU and is not an Arc benchmark. See tiny-benchmark.json.
+
+Linux frozen executable (PyInstaller) successfully performed real quality-model WAV conversion: 4.38254s input, 39.15791s total, 10.28153s model loading, 26.03666s conversion. CPU FP32, 6 steps, RTF 5.94100 for conversion. This does not substitute for Windows verification.

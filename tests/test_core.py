@@ -143,3 +143,11 @@ def test_studio_original_preservation(tmp_path):
     studio.data['review']=[{'start':.5,'end':1,'speakers':['A','B']}];studio.resolve_overlap(0,keep_original=True)
     output=tmp_path/'mix.wav';studio.render(TestEngine(),Profiles(tmp_path/'profiles'),output)
     mixed,_=sf.read(output);assert abs(mixed[100]-.2)<.001;assert abs(mixed[sr]-.1)<.001;assert abs(mixed[int(sr*.75)]-.1)<.001
+
+def test_resume_rejects_different_model(audio,tmp_path):
+    path,_,_=audio; profile=Profiles(tmp_path/'profiles').create('test',path,True)
+    job=Job(path,profile['id'],{'chunk_seconds':1},tmp_path/'sessions'); engine=TestEngine(); engine.model_kind='quality'
+    output=tmp_path/'out.wav'; convert_file(engine,path,profile,output,job)
+    before=digest(output); engine.model_kind='tiny'
+    with pytest.raises(ValueError,match='changed'): convert_file(engine,path,profile,output,Job.resume(job.path/'session.json'))
+    assert digest(output)==before

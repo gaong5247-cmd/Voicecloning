@@ -130,7 +130,7 @@ class Window(QMainWindow):
         from app.services.jobs import Job
         source=self.source.text(); ident=self.profile_combo.currentData(); output=self.output.text()
         if not ident or not source: self.error('Select source and Voice Profile'); return
-        settings={'steps':self.steps.value(),'chunk_seconds':self.chunk.value(),'backend':self.backend.currentText(),'precision':self.precision.currentText()}
+        settings={'steps':self.steps.value(),'chunk_seconds':self.chunk.value(),'backend':self.backend.currentText(),'precision':self.precision.currentText(),'model_kind':self.model_kind.currentText(),'compile':self.compile.isChecked()}
         job=Job(source,ident,settings); self.active_job=job
         self.run_conversion(job,output)
     def run_conversion(self,job,output):
@@ -145,7 +145,7 @@ class Window(QMainWindow):
         from app.services.jobs import Job
         try:
             job=Job.resume(path); self.active_job=job; self.source.setText(job.record['source'])
-            settings=job.record['settings']; self.backend.setCurrentText(settings['backend']); self.precision.setCurrentText(settings['precision'])
+            settings=job.record['settings']; self.backend.setCurrentText(settings['backend']); self.precision.setCurrentText(settings['precision']); self.model_kind.setCurrentText(settings.get('model_kind','quality')); self.compile.setChecked(settings.get('compile',False))
             self.run_conversion(job,job.record.get('output',self.output.text()))
         except Exception as exc: self.error(str(exc))
     def cancel(self):

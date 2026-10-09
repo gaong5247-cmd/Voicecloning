@@ -14,7 +14,7 @@ def convert_file(engine, source, profile, output, job, progress=lambda fraction,
     if source.resolve()==output.resolve(): raise ValueError('Output cannot overwrite the input')
     wave,sr=read_audio(source,engine.sample_rate)
     source_hash=digest(source); ref_hash=digest(profile['reference'])
-    identity={'source':source_hash,'reference':ref_hash,'model':profile['model'],'settings':settings}
+    identity={'source':source_hash,'reference':ref_hash,'model':profile['model'],'settings':settings,'engine_model':getattr(engine,'model_kind','unknown')}
     if job.record.get('identity') not in (None,identity): raise ValueError('Source, model or settings changed. Create a new session.')
     job.record['identity']=identity; job.record['output']=str(output); job.state('running')
     chunk=int(sr*settings.get('chunk_seconds',12)); pad=int(sr*.2)
