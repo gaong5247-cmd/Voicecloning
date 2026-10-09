@@ -5,6 +5,7 @@ def main():
     parser=argparse.ArgumentParser(description='CloneVoice Studio')
     parser.add_argument('--diagnose',action='store_true'); parser.add_argument('--smoke-test',action='store_true')
     parser.add_argument('--download',choices=['voice','separation','diarization'])
+    parser.add_argument('--engine-import-test',action='store_true')
     parser.add_argument('--source'); parser.add_argument('--profile'); parser.add_argument('--output')
     parser.add_argument('--reference'); parser.add_argument('--consent',action='store_true')
     parser.add_argument('--backend',default='auto',choices=['auto','cpu','xpu']); parser.add_argument('--precision',default='fp32',choices=['fp32','fp16','bf16'])
@@ -17,6 +18,18 @@ def main():
             import os
             from app.services.models import download_group
             download_group(args.download,os.environ.get('HF_TOKEN'),print); return 0
+        if args.engine_import_test:
+            from app.config import ROOT
+            sys.path.insert(0,str(ROOT/'vendor/seed_vc'))
+            import seed_loader
+            from modules.flow_matching import CFM
+            from modules.length_regulator import InterpolateRegulator
+            from modules.bigvgan.bigvgan import BigVGAN
+            from modules.campplus.DTDNN import CAMPPlus
+            import transformers, speechbrain, pyannote.audio
+            from app.config import atomic_json
+            atomic_json(DATA/'engine-imports.json',{'status':'passed','version':VERSION,'model_inference':'not executed'})
+            return 0
         if args.diagnose:
             from app.optimization.devices import diagnose
             print(json.dumps(diagnose(),indent=2,ensure_ascii=False)); return 0

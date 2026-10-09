@@ -29,7 +29,9 @@ class Window(QMainWindow):
         self.profiles=Profiles(); self.engine=None; self.engine_key=None; self.worker=None
         self.active_job=None; self.rt=None; self.project=None; self.last_output=None
         config_path=DATA/'settings.json'
-        self.settings=json.loads(config_path.read_text()) if config_path.exists() else {'theme':'dark','language':'한국어'}
+        try: self.settings=json.loads(config_path.read_text()) if config_path.exists() else {'theme':'dark','language':'한국어'}
+        except (ValueError,OSError):
+            logging.exception('Invalid settings; restoring defaults'); self.settings={'theme':'dark','language':'한국어'}
         central=QWidget(); self.setCentralWidget(central); outer=QVBoxLayout(central)
         top=QHBoxLayout(); top.addWidget(QLabel('CLONEVOICE STUDIO   /   Local Voice Workspace'))
         top.addStretch(); self.language=QComboBox(); self.language.addItems(['한국어','English']); self.language.setCurrentText(self.settings.get('language','한국어'))
@@ -288,6 +290,10 @@ class Window(QMainWindow):
         self.turn_table=QTableWidget(0,3); self.turn_table.setHorizontalHeaderLabels(['Start (s)','End (s)','Speaker ID']); l.addWidget(self.turn_table)
         row=QHBoxLayout(); row.addWidget(button('Add turn / 구간 추가',self.add_turn)); row.addWidget(button('Delete turn',self.delete_turn)); row.addWidget(button('Save edits / 구간 저장',self.save_turns)); l.addLayout(row)
         self.assignment=QTableWidget(0,3); self.assignment.setHorizontalHeaderLabels(['Speaker','Voice Profile','Gain']); l.addWidget(self.assignment)
+        self.review_select=QComboBox(); l.addWidget(self.review_select)
+        row=QHBoxLayout(); row.addWidget(button('Listen source 0',lambda:self.preview_overlap(0))); row.addWidget(button('Listen source 1',lambda:self.preview_overlap(1)))
+        row.addWidget(button('Match in order',lambda:self.resolve_overlap(False,False))); row.addWidget(button('Swap sources',lambda:self.resolve_overlap(True,False)))
+        row.addWidget(button('Keep original overlap',lambda:self.resolve_overlap(False,True))); l.addLayout(row)
         l.addWidget(button('Render assigned voices / 변환 및 믹싱',self.render_studio)); self.studio_status=QTextEdit(); self.studio_status.setReadOnly(True); l.addWidget(self.studio_status)
     def new_project(self):
         directory=QFileDialog.getExistingDirectory(self,'Project folder',str(DATA))
@@ -303,6 +309,8 @@ class Window(QMainWindow):
             except Exception as exc: self.error(str(exc))
     def refresh_studio(self):
         if not self.project: return
+        self.review_select.clear()
+        for i,r in enumerate(self.project.data['review']): self.review_select.addItem(f'{i}: {r["start"]:.2f}–{r["end"]:.2f}s {r["speakers"]} {r.get("resolved","review required")}',i)
         turns=self.project.data['turns']; self.turn_table.setRowCount(len(turns))
         for i,t in enumerate(turns):
             for j,key in enumerate(('start','end','speaker')): self.turn_table.setItem(i,j,QTableWidgetItem(str(t[key])))
@@ -347,6 +355,14 @@ class Window(QMainWindow):
         self.task(work,lambda r:self.refresh_studio())
     def check_cancel(self):
         if QThread.currentThread().isInterruptionRequested(): raise RuntimeError('Cancelled')
+    def preview_overlap(self,source):
+        if not self.project or self.review_select.currentData() is None: return
+        try: QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.project.preview_source(self.review_select.currentData(),source))))
+        except Exception as exc: self.error(str(exc))
+    def resolve_overlap(self,swap,keep):
+        if not self.project or self.review_select.currentData() is None: return
+        project=self.project; index=self.review_select.currentData()
+        self.task(lambda p:project.resolve_overlap(index,swap,keep),lambda r:self.refresh_studio())
     def render_studio(self):
         if not self.project or not self.project.data['tracks']: self.error('Generate tracks first'); return
         project=self.project

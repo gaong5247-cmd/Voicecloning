@@ -38,6 +38,7 @@ class Studio:
         return self.data
     def split_tracks(self,progress=lambda m:None,check=lambda:None):
         check_group('separation'); import torch
+        torch.set_num_threads(4)
         from speechbrain.inference.separation import SepformerSeparation
         from speechbrain.inference.speaker import EncoderClassifier
         from speechbrain.utils.fetching import LocalStrategy
@@ -49,10 +50,10 @@ class Studio:
         tracks={s:np.zeros_like(wave) for s in speakers}; templates={}; review=[]
         separator=SepformerSeparation.from_hparams(source=str(model_dir('speechbrain/sepformer-wsj02mix')),
             savedir=str(self.directory/'separator'),run_opts={'device':'cpu'},
-            local_strategy=LocalStrategy.COPY)
+            local_strategy=LocalStrategy.NO_LINK)
         embedder=EncoderClassifier.from_hparams(source=str(model_dir('speechbrain/spkrec-ecapa-voxceleb')),
             savedir=str(self.directory/'embedder'),run_opts={'device':'cpu'},
-            overrides={'pretrained_path':str(model_dir('speechbrain/spkrec-ecapa-voxceleb'))},local_strategy=LocalStrategy.COPY)
+            overrides={'pretrained_path':str(model_dir('speechbrain/spkrec-ecapa-voxceleb'))},local_strategy=LocalStrategy.NO_LINK)
         def embedding(w):
             v=embedder.encode_batch(torch.from_numpy(resample(w,sr,16000))[None]).flatten().detach().cpu().numpy()
             return v/(np.linalg.norm(v)+1e-9)
@@ -91,12 +92,33 @@ class Studio:
                         if n: core[:n]*=np.linspace(0,1,n); core[-n:]*=np.linspace(1,0,n)
                         tracks[ids[who]][a:b]=core
                 except Exception as exc:
-                    tracks[ids[0]][a:b]=wave[a:b]; review.append({**span,'reason':str(exc),'policy':'original kept once; do not convert without review'})
+                    tracks[ids[0]][a:b]=wave[a:b]; review.append({**span,'reason':str(exc),'source_cache':str(cache) if cache.exists() else None,
+                        'crop_start':left,'policy':'original kept once; do not convert without review'})
         for speaker,track in tracks.items():
             path=self.directory/(speaker+'.wav'); write_audio(path,track,sr); self.data['tracks'][speaker]=str(path)
         self.data['review']=review; self.save(); return self.data
+    def resolve_overlap(self,index,swap=False,keep_original=False):
+        review=self.data['review'][index]
+        if keep_original:
+            review['resolved']='keep_original'; self.save(); return
+        if not review.get('source_cache'): raise ValueError('No separated sources available; preserve original or reprocess.')
+        wave,sr=read_audio(self.data['source'],22050)
+        with np.load(review['source_cache'],allow_pickle=False) as z: sources=z['sources']
+        ids=list(review['speakers'])
+        if len(ids)!=2 or sources.shape[0]!=2: raise ValueError('Only two-source manual matching is supported')
+        if swap: ids.reverse()
+        a=int(review['start']*sr); b=min(len(wave),int(review['end']*sr)); left=review['crop_start']
+        for i,speaker in enumerate(ids):
+            path=self.data['tracks'][speaker]; track,_=read_audio(path,sr)
+            track[a:b]=sources[i,a-left:b-left]; write_audio(path,track,sr)
+        self.data['review'].pop(index); self.save()
+    def preview_source(self,index,source):
+        review=self.data['review'][index]
+        if not review.get('source_cache'): raise ValueError('No separated source cache')
+        with np.load(review['source_cache'],allow_pickle=False) as z: wave=z['sources'][source]
+        path=self.directory/f'review_{index}_source_{source}.wav'; write_audio(path,wave,22050); return path
     def render(self,engine,profiles,output,steps=20,progress=lambda m:None,check=lambda:None):
-        if self.data['review']: raise ValueError('Resolve or remove uncertain overlap regions before voice conversion. Original tracks are available for review.')
+        if any(r.get('resolved')!='keep_original' for r in self.data['review']): raise ValueError('Resolve or remove uncertain overlap regions before voice conversion. Original tracks are available for review.')
         wave,sr=read_audio(self.data['source'],engine.sample_rate); mixed=np.zeros_like(wave)
         for speaker,path in self.data['tracks'].items():
             check(); settings=self.data['assignments'].get(speaker,{})
@@ -113,4 +135,10 @@ class Studio:
                         converted,_=align_length(converted,end-start); output_track[start:end]=converted
                 track=output_track
             mixed[:min(len(track),len(mixed))]+=track[:len(mixed)]*float(settings.get('gain',1))
+        # Preserve nonspeech regions and explicitly reviewed original overlaps.
+        occupied=np.zeros(len(wave),dtype=bool)
+        for span in regions(self.data['turns']): occupied[int(span['start']*sr):int(span['end']*sr)]=True
+        mixed[~occupied]=wave[~occupied]
+        for review in self.data['review']:
+            a=int(review['start']*sr); b=min(len(wave),int(review['end']*sr)); mixed[a:b]=wave[a:b]
         write_audio(output,mixed,sr); self.data['output']=str(output); self.save(); return self.data

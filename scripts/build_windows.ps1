@@ -4,7 +4,7 @@ Set-Location (Split-Path $PSScriptRoot -Parent)
 function Run-Python { & python @args; if ($LASTEXITCODE -ne 0) { throw "Python failed: $args" } }
 if (-not $SkipInstall) {
     Run-Python -m pip install -r "requirements/$Backend.txt"
-    Run-Python -m pip install -r requirements/base.txt -r requirements/studio.txt -r requirements/build.txt
+    Run-Python -m pip install -r requirements/base.txt -r requirements/studio.txt -r requirements/build.txt -c requirements/windows-lock.txt
 }
 Run-Python -m pip check
 Run-Python -m pytest tests -q
@@ -31,6 +31,8 @@ $env:QT_QPA_PLATFORM='offscreen'
 $smoke = Start-Process 'dist/CloneVoiceStudio/CloneVoiceStudio.exe' -ArgumentList '--smoke-test' -Wait -PassThru
 if ($smoke.ExitCode -ne 0) { throw "Frozen GUI smoke failed: $($smoke.ExitCode)" }
 Remove-Item Env:QT_QPA_PLATFORM
+$engineCheck = Start-Process 'dist/CloneVoiceStudio/CloneVoiceStudio.exe' -ArgumentList '--engine-import-test' -Wait -PassThru
+if ($engineCheck.ExitCode -ne 0) { throw "Frozen engine imports failed: $($engineCheck.ExitCode)" }
 Copy-Item README.md,LICENSE,THIRD_PARTY_NOTICES.md dist/CloneVoiceStudio/
 if (Test-Path ffmpeg-notices) { Copy-Item -Recurse ffmpeg-notices dist/CloneVoiceStudio/ }
 Run-Python -m pip freeze --exclude-editable | Out-File -Encoding utf8 dist/CloneVoiceStudio/dependency-versions.txt

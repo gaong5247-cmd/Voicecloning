@@ -40,8 +40,8 @@ CLI: `python launcher.py --diagnose`; `--download voice`; create a profile with 
 - Persistent cancellable inference sessions; validated completed chunk reuse on resume.
 - Experimental buffered microphone → worker → output stream with bounded rings, overload counters, noise gate, mute, original monitor and software latency estimate. This uses the **file V1 model**, not the optimized tiny streaming engine; hardware latency is unmeasured.
 - Community-1 local CPU diarization adapter, editable turn table and colored overlap timeline.
-- SepFormer 2-source CPU separation on overlapping regions only, ECAPA source permutation matching, cached results, original preservation on uncertain matching. These model integrations require additional validation.
-- Speaker-profile assignment, track gain, timeline reconstruction and mixing. Review blocks rendering when source identity is uncertain.
+- SepFormer 2-source CPU separation on overlapping regions only, ECAPA source permutation matching, cached results, original preservation on uncertain matching. SepFormer and ECAPA model inference and synthetic overlap-track reconstruction have been tested on Linux CPU; real-room/Korean and Windows tests remain required.
+- Speaker-profile assignment, track gain, timeline reconstruction and mixing. Review blocks rendering when source identity is uncertain; preview the separated sources, manually match/swap their IDs or explicitly keep that overlap original.
 
 ## Limitations / unsupported
 

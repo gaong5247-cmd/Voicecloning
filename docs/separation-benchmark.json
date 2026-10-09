@@ -1,0 +1,23 @@
+{
+  "fixture": "two authorized FFmpeg flite synthetic English voices",
+  "timeline": "manual ground-truth turns, not automatic diarization",
+  "audio_seconds": 6,
+  "split_seconds": 9.02412160699987,
+  "si_sdr_scores_db": [
+    [
+      -26.37976837158203,
+      6.708986282348633
+    ],
+    [
+      11.638998985290527,
+      -21.779041290283203
+    ]
+  ],
+  "mixture_si_sdr_db": [
+    -4.924510955810547,
+    5.560178279876709
+  ],
+  "best_permutation_mean_si_sdri_db": 8.856158971786499,
+  "review_required": [],
+  "quality_scope": "this one synthetic fixture only; Korean/real-room separation untested"
+}

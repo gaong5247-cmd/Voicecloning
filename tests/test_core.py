@@ -123,3 +123,23 @@ def test_model_weight_corruption(tmp_path,monkeypatch):
     monkeypatch.setattr(models,'selected',lambda repo,file:True)
     (tmp_path/'models').mkdir(); (tmp_path/'models/model.ckpt').write_bytes(b'corrupt')
     with pytest.raises(RuntimeError,match='integrity'): models.check_group('test')
+
+def test_studio_manual_source_remap(tmp_path):
+    from app.engine.studio import Studio
+    sr=22050; source=tmp_path/'source.wav'; sf.write(source,np.ones(sr*2)*.1,sr)
+    studio=Studio(tmp_path/'project',source); tracks={}
+    for speaker in ('A','B'):
+        p=tmp_path/(speaker+'.wav'); sf.write(p,np.zeros(sr*2),sr); tracks[speaker]=str(p)
+    cache=tmp_path/'sources.npz'; np.savez(cache,sources=np.stack([np.ones(sr)*.2,np.ones(sr)*.4]))
+    studio.data['tracks']=tracks; studio.data['review']=[{'start':.5,'end':1.5,'speakers':['A','B'],'crop_start':int(sr*.5),'source_cache':str(cache)}]
+    studio.resolve_overlap(0,swap=True)
+    wave,_=sf.read(tracks['A']); assert abs(wave[sr]-.4)<.001; assert not studio.data['review']
+
+def test_studio_original_preservation(tmp_path):
+    from app.engine.studio import Studio
+    sr=22050; source=tmp_path/'source.wav'; x=np.ones(sr*2)*.1; sf.write(source,x,sr)
+    studio=Studio(tmp_path/'project',source); track=tmp_path/'track.wav'; y=np.zeros(sr*2);y[:sr]=.2;sf.write(track,y,sr)
+    studio.data['turns']=[{'start':0,'end':1,'speaker':'A'}];studio.data['tracks']={'A':str(track)}
+    studio.data['review']=[{'start':.5,'end':1,'speakers':['A','B']}];studio.resolve_overlap(0,keep_original=True)
+    output=tmp_path/'mix.wav';studio.render(TestEngine(),Profiles(tmp_path/'profiles'),output)
+    mixed,_=sf.read(output);assert abs(mixed[100]-.2)<.001;assert abs(mixed[sr]-.1)<.001;assert abs(mixed[int(sr*.75)]-.1)<.001
